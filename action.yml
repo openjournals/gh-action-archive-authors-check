@@ -1,0 +1,87 @@
+name: Open Journals archive and authors checks
+description: "Compare a paper's authors with its Zenodo archive and the repository's contributors, and check that the archive's Zenodo DOI is a version DOI"
+inputs:
+  check:
+    description: "The check to run: 'authors' (compare the authors of the paper with the archive's creators and the repository's contributors) or 'zenodo-doi' (check that the archive's DOI is a Zenodo version DOI)"
+    required: false
+    default: authors
+  issue_id:
+    description: The review issue id for the paper
+    required: true
+  repository_url:
+    description: The repository URL of the submission containing the paper file. Not needed for the 'zenodo-doi' check
+    required: false
+    default: ""
+  branch:
+    description: Git branch where the paper is located
+    required: false
+    default: ""
+  archive:
+    description: "The archive value in the review issue (a Zenodo DOI). If it's empty or pending, the 'authors' check looks for a Zenodo archive in the comments of the issue"
+    required: false
+    default: ""
+  paper:
+    description: "Path of the paper's file in the repository. Default is the paper.md or paper.tex closest to the root. Only for the 'authors' check"
+    required: false
+    default: ""
+  ignored_users:
+    description: "GitHub usernames (separated by commas, spaces or new lines) to leave out of the list of contributors, like the editor and the reviewers. Only for the 'authors' check"
+    required: false
+    default: ""
+  archive_field:
+    description: "Name of the archive field, as in '@bot set <DOI> as <archive_field>'. Only for the 'authors' check"
+    required: false
+    default: archive
+  bot_name:
+    description: "Name of the bot that runs the commands in the review issue. Its comments are skipped when looking for the archive"
+    required: false
+    default: editorialbot
+  silent_if_not_zenodo:
+    description: "Post nothing if the archive isn't a Zenodo DOI (or is empty), instead of saying there's nothing to check. Only for the 'zenodo-doi' check"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 4.0
+        bundler-cache: true
+        cache-version: archive-authors-checks
+        bundler: Gemfile.lock
+        working-directory: ${{ github.action_path }}
+      env:
+        BUNDLE_WITHOUT: test
+    - name: Check authors
+      if: ${{ inputs.check == 'authors' }}
+      shell: bash
+      env:
+        ISSUE_ID: ${{ inputs.issue_id }}
+        REPOSITORY_URL: ${{ inputs.repository_url }}
+        BRANCH: ${{ inputs.branch }}
+        ARCHIVE: ${{ inputs.archive }}
+        PAPER: ${{ inputs.paper }}
+        IGNORED_USERS: ${{ inputs.ignored_users }}
+        ARCHIVE_FIELD: ${{ inputs.archive_field }}
+        BOT_NAME: ${{ inputs.bot_name }}
+        BUNDLE_GEMFILE: ${{ github.action_path }}/Gemfile
+        BUNDLE_WITHOUT: test
+      run: |
+        bundle exec ruby ${{ github.action_path }}/check_authors.rb
+    - name: Check Zenodo DOI
+      if: ${{ inputs.check == 'zenodo-doi' }}
+      shell: bash
+      env:
+        ISSUE_ID: ${{ inputs.issue_id }}
+        ARCHIVE: ${{ inputs.archive }}
+        SILENT_IF_NOT_ZENODO: ${{ inputs.silent_if_not_zenodo }}
+        BUNDLE_GEMFILE: ${{ github.action_path }}/Gemfile
+        BUNDLE_WITHOUT: test
+      run: |
+        bundle exec ruby ${{ github.action_path }}/check_zenodo_doi.rb
+
+branding:
+  icon: check-circle
+  color: blue
