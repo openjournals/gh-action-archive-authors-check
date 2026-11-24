@@ -1,2 +1,3 @@
-# gh-action-archive-authors-check
-GitHub action to check author matches between an openjournals paper and the archived software
+# Open Journals :: Check archive's authors
+
+This action reads the authors list from the paper's metadata and compares it with the author list of the Zenodo archive
